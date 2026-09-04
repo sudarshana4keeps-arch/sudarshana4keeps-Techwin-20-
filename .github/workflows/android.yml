@@ -22,7 +22,7 @@ jobs:
 
     - name: Setup Android Project Structure
       run: |
-        # 1. Unzip project if zip exists
+        # 1. Zip එක තිබේ නම් Extract කිරීම
         ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
         if [ -n "$ZIP_FILE" ]; then
           echo "Extracting $ZIP_FILE..."
@@ -30,7 +30,7 @@ jobs:
           cp -rn extracted_project/*/* . 2>/dev/null || cp -rn extracted_project/* . 2>/dev/null || true
         fi
 
-        # 2. Setup root build.gradle
+        # 2. Root build.gradle සෑදීම
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -38,7 +38,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:7.4.2'
+                classpath 'com.android.tools.build:gradle:8.1.1'
             }
         }
         allprojects {
@@ -49,7 +49,7 @@ jobs:
         }
         EOF
 
-        # 3. Create app module structure if app directory is missing/incomplete
+        # 3. Android source files අවශ්‍ය පරිදි සකස් කිරීම
         mkdir -p app/src/main/java app/src/main/res
 
         if [ -f "AndroidManifest.xml" ]; then
@@ -62,7 +62,7 @@ jobs:
           mv res/* app/src/main/res/ 2>/dev/null || true
         fi
 
-        # Create proper app build.gradle
+        # 4. Correct App level build.gradle සෑදීම
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -80,11 +80,6 @@ jobs:
                 versionName "1.0"
             }
 
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
-            }
             compileOptions {
                 sourceCompatibility JavaVersion.VERSION_17
                 targetCompatibility JavaVersion.VERSION_17
@@ -92,16 +87,17 @@ jobs:
         }
         EOF
 
-        # 4. Create settings.gradle
+        # 5. settings.gradle සෑදීම
         echo "include ':app'" > settings.gradle
 
-    - name: Generate Wrapper & Build APK
-      run: |
-        gradle wrapper --gradle-version 7.5
-        chmod +x gradlew
-        ./gradlew assembleDebug
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
 
-    - name: Upload APK Artifact
+    - name: Build APK
+      run: |
+        gradle assembleDebug
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
