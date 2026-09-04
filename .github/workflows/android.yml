@@ -90,9 +90,6 @@ jobs:
         # 5. settings.gradle
         echo "include ':app'" > settings.gradle
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
     - name: Generate Wrapper & Build APK
       run: |
         gradle wrapper --gradle-version 8.1.1
