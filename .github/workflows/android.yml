@@ -20,32 +20,96 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Extract Project Zip if exists
+    - name: Setup Android Project Structure
       run: |
+        # 1. Unzip project if zip exists
         ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
         if [ -n "$ZIP_FILE" ]; then
           echo "Extracting $ZIP_FILE..."
           unzip -o "$ZIP_FILE" -d extracted_project
-          cp -r extracted_project/*/* . 2>/dev/null || cp -r extracted_project/* . 2>/dev/null || true
+          cp -rn extracted_project/*/* . 2>/dev/null || cp -rn extracted_project/* . 2>/dev/null || true
+        fi
+
+        # 2. Setup standard Android build.gradle if missing
+        if [ ! -f "build.gradle" ] && [ ! -f "build.gradle.kts" ]; then
+          cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.1'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+        fi
+
+        # 3. Create app module directory if source files exist at root
+        if [ ! -f "app/build.gradle" ]; then
+          mkdir -p app/src/main/java app/src/main/res
+          
+          # Move AndroidManifest to app directory
+          if [ -f "AndroidManifest.xml" ]; then
+            mv AndroidManifest.xml app/src/main/
+          fi
+          
+          # Move java files to app directory
+          find . -maxdepth 2 -name "*.java" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
+          
+          # Move res contents if any
+          if [ -d "res" ]; then
+            mv res/* app/src/main/res/ 2>/dev/null || true
+          fi
+
+          # Create app build.gradle
+          cat << 'EOF' > app/build.gradle
+        apply plugin: 'com.android.application'
+
+        android {
+            namespace 'com.techwin.app'
+            compileSdk 33
+
+            defaultConfig {
+                applicationId "com.techwin.app"
+                minSdk 21
+                targetSdk 33
+                versionCode 1
+                versionName "1.0"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        EOF
+        fi
+
+        # 4. Create settings.gradle
+        if [ ! -f "settings.gradle" ]; then
+          echo "include ':app'" > settings.gradle
         fi
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Generate Wrapper and Build
+    - name: Build APK
       run: |
-        GRADLEW=$(find . -name "gradlew" | head -n 1)
-        if [ -n "$GRADLEW" ]; then
-          DIR=$(dirname "$GRADLEW")
-          cd "$DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
-        else
-          echo "Gradle wrapper not found. Installing gradle wrapper..."
-          gradle wrapper
-          chmod +x gradlew
-          ./gradlew assembleDebug
-        fi
+        gradle wrapper
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
