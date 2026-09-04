@@ -30,16 +30,15 @@ jobs:
           cp -rn extracted_project/*/* . 2>/dev/null || cp -rn extracted_project/* . 2>/dev/null || true
         fi
 
-        # 2. Setup standard Android build.gradle if missing
-        if [ ! -f "build.gradle" ] && [ ! -f "build.gradle.kts" ]; then
-          cat << 'EOF' > build.gradle
+        # 2. Setup root build.gradle
+        cat << 'EOF' > build.gradle
         buildscript {
             repositories {
                 google()
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
+                classpath 'com.android.tools.build:gradle:7.4.2'
             }
         }
         allprojects {
@@ -49,28 +48,25 @@ jobs:
             }
         }
         EOF
+
+        # 3. Create app module structure if app directory is missing/incomplete
+        mkdir -p app/src/main/java app/src/main/res
+
+        if [ -f "AndroidManifest.xml" ]; then
+          mv AndroidManifest.xml app/src/main/
         fi
 
-        # 3. Create app module directory if source files exist at root
-        if [ ! -f "app/build.gradle" ]; then
-          mkdir -p app/src/main/java app/src/main/res
-          
-          # Move AndroidManifest to app directory
-          if [ -f "AndroidManifest.xml" ]; then
-            mv AndroidManifest.xml app/src/main/
-          fi
-          
-          # Move java files to app directory
-          find . -maxdepth 2 -name "*.java" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
-          
-          # Move res contents if any
-          if [ -d "res" ]; then
-            mv res/* app/src/main/res/ 2>/dev/null || true
-          fi
+        find . -maxdepth 2 -name "*.java" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
 
-          # Create app build.gradle
-          cat << 'EOF' > app/build.gradle
-        apply plugin: 'com.android.application'
+        if [ -d "res" ]; then
+          mv res/* app/src/main/res/ 2>/dev/null || true
+        fi
+
+        # Create proper app build.gradle
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
 
         android {
             namespace 'com.techwin.app'
@@ -95,23 +91,17 @@ jobs:
             }
         }
         EOF
-        fi
 
         # 4. Create settings.gradle
-        if [ ! -f "settings.gradle" ]; then
-          echo "include ':app'" > settings.gradle
-        fi
+        echo "include ':app'" > settings.gradle
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Build APK
+    - name: Generate Wrapper & Build APK
       run: |
-        gradle wrapper
+        gradle wrapper --gradle-version 7.5
         chmod +x gradlew
         ./gradlew assembleDebug
 
-    - name: Upload APK
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
