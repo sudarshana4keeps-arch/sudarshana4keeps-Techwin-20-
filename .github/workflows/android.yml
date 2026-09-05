@@ -15,23 +15,22 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
 
     - name: Setup Android Project Structure
       run: |
+        set -e
         # 1. Unzip project if zip exists
-        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
+        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1 || true)
         if [ -n "$ZIP_FILE" ]; then
           echo "Extracting $ZIP_FILE..."
           unzip -o "$ZIP_FILE" -d extracted_project
-          # Extract root contents while preserving structure
-          EXTRACT_DIR=$(find extracted_project -maxdepth 1 -mindepth 1 -type d | head -n 1)
-          if [ -n "$EXTRACT_DIR" ]; then
-            cp -rn "$EXTRACT_DIR"/* . 2>/dev/null || true
-          else
+          
+          # Move files while checking directory depth safely
+          if [ -d "extracted_project" ]; then
             cp -rn extracted_project/* . 2>/dev/null || true
           fi
         fi
@@ -56,18 +55,19 @@ jobs:
         EOF
 
         # 3. Create app module structure
-        mkdir -p app/src/main
+        mkdir -p app/src/main/java app/src/main/res
 
         if [ -f "AndroidManifest.xml" ]; then
           mv AndroidManifest.xml app/src/main/
         fi
 
+        # Move source directories safely
         if [ -d "src" ]; then
-          mv src app/src/main/java 2>/dev/null || true
+          cp -r src/* app/src/main/java/ 2>/dev/null || true
         fi
 
         if [ -d "res" ]; then
-          mv res app/src/main/ 2>/dev/null || true
+          cp -r res/* app/src/main/res/ 2>/dev/null || true
         fi
 
         # 4. App level build.gradle
