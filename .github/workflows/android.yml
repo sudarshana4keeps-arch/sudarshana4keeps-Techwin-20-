@@ -22,8 +22,6 @@ jobs:
 
     - name: Setup Android Project Structure
       run: |
-        set -x  # Print commands for debugging
-
         # 1. Unzip project if zip exists
         ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1 || true)
         if [ -n "$ZIP_FILE" ]; then
@@ -58,7 +56,6 @@ jobs:
           mv AndroidManifest.xml app/src/main/
         fi
 
-        # Move source files while keeping package directory structure
         find . -maxdepth 3 -type d -name "com" -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
         find . -maxdepth 3 -type d -name "org" -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
 
@@ -67,9 +64,6 @@ jobs:
         fi
 
         # 4. App level build.gradle
-        cat << 'EOF' > app/app.gradle
-EOF
-
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -101,10 +95,9 @@ EOF
       run: |
         gradle wrapper --gradle-version 8.0
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace --info
+        ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
-      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
