@@ -20,17 +20,17 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android Project Structure
+    - name: Extract Zip (If present)
       run: |
-        # 1. Unzip project if zip exists
         ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1 || true)
         if [ -n "$ZIP_FILE" ]; then
           echo "Extracting $ZIP_FILE..."
-          unzip -o "$ZIP_FILE" -d extracted_project
-          cp -rn extracted_project/* . 2>/dev/null || true
+          unzip -o "$ZIP_FILE" -d . || true
         fi
 
-        # 2. Root build.gradle
+    - name: Create Dynamic Build Files
+      run: |
+        # 1. Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -49,21 +49,23 @@ jobs:
         }
         EOF
 
-        # 3. Create app module structure
+        # 2. Prepare app directory
         mkdir -p app/src/main/java app/src/main/res
 
+        # 3. Move AndroidManifest if exists in root
         if [ -f "AndroidManifest.xml" ]; then
           mv AndroidManifest.xml app/src/main/
         fi
 
-        find . -maxdepth 3 -type d -name "com" -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
-        find . -maxdepth 3 -type d -name "org" -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
+        # 4. Copy Java sources safely
+        find . -maxdepth 4 -type d \( -name "com" -o -name "org" -o -name "java" \) -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
 
+        # 5. Copy Res safely
         if [ -d "res" ]; then
           cp -r res/* app/src/main/res/ 2>/dev/null || true
         fi
 
-        # 4. App level build.gradle
+        # 6. App build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -88,17 +90,17 @@ jobs:
         }
         EOF
 
-        # 5. settings.gradle
+        # 7. settings.gradle
         echo "include ':app'" > settings.gradle
 
     - name: Generate Wrapper & Build APK
       run: |
         gradle wrapper --gradle-version 8.0
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        ./gradlew assembleDebug --stacktrace --full-stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: "app/build/outputs/apk/debug/*.apk"
+        path: "**/build/outputs/apk/debug/*.apk"
