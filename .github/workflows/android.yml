@@ -129,13 +129,13 @@ jobs:
           }`;
           fs.writeFileSync('app/build.gradle', appGradle);
 
-    - name: Setup Gradle Runner
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.1.1'
+    - name: Generate Gradle Wrapper
+      run: gradle wrapper --gradle-version 8.1.1
 
-    - name: Build Debug APK
-      run: gradle assembleDebug
+    - name: Build Debug APK with Wrapper
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
