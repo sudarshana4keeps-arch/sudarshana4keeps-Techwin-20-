@@ -19,27 +19,170 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android Project Structure
+    - name: Setup Android Project Structure & UI Components
       run: |
         rm -rf app build.gradle settings.gradle gradle gradlew gradlew.bat
         
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/mipmap-hdpi
+        mkdir -p app/src/main/res/drawable
 
+        # Default App Icon එක නිර්මාණය (Vector shape)
+        cat << 'EOF' > app/src/main/res/drawable/ic_launcher_bg.xml
+        <vector xmlns:android="http://schemas.android.com/apk/res/android"
+            android:width="108dp"
+            android:height="108dp"
+            android:viewportWidth="108"
+            android:viewportHeight="108">
+            <path
+                android:fillColor="#1E1B4B"
+                android:pathData="0,0h108v108h-108z"/>
+            <path
+                android:fillColor="#6366F1"
+                android:pathData="M30,30h48v48h-48z"/>
+        </vector>
+        EOF
+
+        # Java Code (UI Layout, Custom Colors, Side Clock Implementation)
         cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
         package com.techwin.analyzer;
 
         import android.app.Activity;
+        import android.graphics.Color;
+        import android.graphics.Typeface;
+        import android.graphics.drawable.GradientDrawable;
         import android.os.Bundle;
+        import android.os.Handler;
+        import android.os.Looper;
+        import android.view.Gravity;
+        import android.view.View;
+        import android.widget.Button;
+        import android.widget.LinearLayout;
+        import android.widget.RelativeLayout;
         import android.widget.TextView;
+        import android.widget.Toast;
+        import java.text.SimpleDateFormat;
+        import java.util.Date;
+        import java.util.Locale;
 
         public class MainActivity extends Activity {
+            private TextView clockTextView;
+            private Handler timeHandler = new Handler(Looper.getMainLooper());
+            private Runnable updateTimeRunnable;
+
             @Override
             protected void onCreate(Bundle savedInstanceState) {
                 super.onCreate(savedInstanceState);
-                TextView textView = new TextView(this);
-                textView.setText("TECHWIN Analyzer App");
-                setContentView(textView);
+
+                // Main Parent Layout
+                RelativeLayout rootLayout = new RelativeLayout(this);
+                rootLayout.setBackgroundColor(Color.parseColor("#0F172A")); // Deep Navy Dark Mode
+                rootLayout.setPadding(40, 40, 40, 40);
+
+                // Top Header Container (App Name left, Live Clock right)
+                RelativeLayout headerLayout = new RelativeLayout(this);
+                headerLayout.setId(View.generateViewId());
+                
+                TextView titleText = new TextView(this);
+                titleText.setText("TECHWIN");
+                titleText.setTextSize(20);
+                titleText.setTextColor(Color.parseColor("#818CF8")); // Electric Indigo
+                titleText.setTypeface(null, Typeface.BOLD);
+                
+                RelativeLayout.LayoutParams titleParams = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                titleParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                headerLayout.addView(titleText, titleParams);
+
+                // Right Side Normal Live Clock
+                clockTextView = new TextView(this);
+                clockTextView.setTextSize(14);
+                clockTextView.setTextColor(Color.parseColor("#38BDF8")); // Sky Blue
+                clockTextView.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+                
+                RelativeLayout.LayoutParams clockParams = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                clockParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                headerLayout.addView(clockTextView, clockParams);
+
+                RelativeLayout.LayoutParams headerParams = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                headerParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                rootLayout.addView(headerLayout, headerParams);
+
+                // Center Content Card
+                LinearLayout contentLayout = new LinearLayout(this);
+                contentLayout.setOrientation(LinearLayout.VERTICAL);
+                contentLayout.setGravity(Gravity.CENTER);
+
+                // Card Background (Rounded Gradient Card)
+                GradientDrawable cardBg = new GradientDrawable();
+                cardBg.setColor(Color.parseColor("#1E293B"));
+                cardBg.setCornerRadius(24f);
+                cardBg.setStroke(2, Color.parseColor("#334155"));
+                contentLayout.setBackground(cardBg);
+                contentLayout.setPadding(50, 60, 50, 60);
+
+                TextView mainLabel = new TextView(this);
+                mainLabel.setText("Analyzer Dashboard");
+                mainLabel.setTextSize(22);
+                mainLabel.setTextColor(Color.WHITE);
+                mainLabel.setTypeface(null, Typeface.BOLD);
+                mainLabel.setPadding(0, 0, 0, 15);
+
+                TextView subLabel = new TextView(this);
+                subLabel.setText("System status: Active & Ready");
+                subLabel.setTextSize(14);
+                subLabel.setTextColor(Color.parseColor("#94A3B8"));
+                subLabel.setPadding(0, 0, 0, 50);
+
+                // Styled Modern Button
+                Button actionButton = new Button(this);
+                actionButton.setText("START ANALYSIS");
+                actionButton.setTextColor(Color.WHITE);
+                actionButton.setTypeface(null, Typeface.BOLD);
+                
+                GradientDrawable btnBg = new GradientDrawable();
+                btnBg.setColor(Color.parseColor("#6366F1"));
+                btnBg.setCornerRadius(16f);
+                actionButton.setBackground(btnBg);
+                actionButton.setPadding(40, 20, 40, 20);
+
+                actionButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Toast.makeText(MainActivity.this, "Analysis Initialized Successfully!", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                contentLayout.addView(mainLabel);
+                contentLayout.addView(subLabel);
+                contentLayout.addView(actionButton);
+
+                RelativeLayout.LayoutParams contentParams = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                contentParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+                rootLayout.addView(contentLayout, contentParams);
+
+                setContentView(rootLayout);
+
+                // Dynamic Clock Handler
+                updateTimeRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        String currentTime = new SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(new Date());
+                        clockTextView.setText(currentTime);
+                        timeHandler.postDelayed(this, 1000);
+                    }
+                };
+                timeHandler.post(updateTimeRunnable);
+            }
+
+            @Override
+            protected void onDestroy() {
+                super.onDestroy();
+                timeHandler.removeCallbacks(updateTimeRunnable);
             }
         }
         EOF
@@ -50,6 +193,7 @@ jobs:
             package="com.techwin.analyzer">
             <application
                 android:allowBackup="true"
+                android:icon="@drawable/ic_launcher_bg"
                 android:label="TECHWIN Analyzer"
                 android:supportsRtl="true">
                 <activity
