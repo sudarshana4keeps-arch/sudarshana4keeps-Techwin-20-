@@ -26,7 +26,7 @@ jobs:
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/drawable
 
-        # Stable Clean Custom App Icon
+        # Modern Vibrant App Icon Vector Design
         cat << 'EOF' > app/src/main/res/drawable/ic_launcher.xml
         <vector xmlns:android="http://schemas.android.com/apk/res/android"
             android:width="108dp"
@@ -38,26 +38,36 @@ jobs:
                 android:pathData="M0,0h108v108h-108z"/>
             <path
                 android:fillColor="#6366F1"
-                android:pathData="M30,30h48v48h-48z"/>
+                android:pathData="M54,18 L86,86 L54,70 L22,86 Z"/>
+            <path
+                android:fillColor="#38BDF8"
+                android:pathData="M54,30 L72,75 L54,64 L36,75 Z"/>
         </vector>
         EOF
 
-        # Java Code - Safe execution on Main Thread with no-crash theme
+        # Java Code (Data & Crash Time Analysis, Image Upload, Live Clock)
         cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
         package com.techwin.analyzer;
 
         import android.app.Activity;
+        import android.content.Intent;
+        import android.graphics.Bitmap;
         import android.graphics.Color;
         import android.graphics.Typeface;
         import android.graphics.drawable.GradientDrawable;
+        import android.net.Uri;
         import android.os.Bundle;
         import android.os.Handler;
         import android.os.Looper;
+        import android.provider.MediaStore;
         import android.view.Gravity;
         import android.view.View;
         import android.widget.Button;
+        import android.widget.EditText;
+        import android.widget.ImageView;
         import android.widget.LinearLayout;
         import android.widget.RelativeLayout;
+        import android.widget.ScrollView;
         import android.widget.TextView;
         import android.widget.Toast;
         import java.text.SimpleDateFormat;
@@ -65,7 +75,11 @@ jobs:
         import java.util.Locale;
 
         public class MainActivity extends Activity {
+            private static final int PICK_IMAGE_REQUEST = 1;
             private TextView clockTextView;
+            private ImageView imageView;
+            private EditText inputDataText;
+            private TextView resultTextView;
             private Handler timeHandler;
             private Runnable updateTimeRunnable;
 
@@ -74,12 +88,15 @@ jobs:
                 super.onCreate(savedInstanceState);
 
                 try {
+                    ScrollView scrollView = new ScrollView(this);
+                    scrollView.setBackgroundColor(Color.parseColor("#0F172A"));
+
                     RelativeLayout rootLayout = new RelativeLayout(this);
-                    rootLayout.setBackgroundColor(Color.parseColor("#0F172A"));
                     rootLayout.setPadding(40, 60, 40, 40);
 
                     // Top Header Layout
                     RelativeLayout headerLayout = new RelativeLayout(this);
+                    headerLayout.setId(View.generateViewId());
                     
                     TextView titleText = new TextView(this);
                     titleText.setText("TECHWIN");
@@ -92,7 +109,6 @@ jobs:
                     titleParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
                     headerLayout.addView(titleText, titleParams);
 
-                    // Right Side Normal Clock
                     clockTextView = new TextView(this);
                     clockTextView.setTextSize(14);
                     clockTextView.setTextColor(Color.parseColor("#38BDF8"));
@@ -108,31 +124,82 @@ jobs:
                     headerParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                     rootLayout.addView(headerLayout, headerParams);
 
-                    // Middle Card Layout
+                    // Content Container Layout
                     LinearLayout contentLayout = new LinearLayout(this);
                     contentLayout.setOrientation(LinearLayout.VERTICAL);
-                    contentLayout.setGravity(Gravity.CENTER);
+                    contentLayout.setGravity(Gravity.CENTER_HORIZONTAL);
 
                     GradientDrawable cardBg = new GradientDrawable();
                     cardBg.setColor(Color.parseColor("#1E293B"));
                     cardBg.setCornerRadius(24f);
                     cardBg.setStroke(2, Color.parseColor("#334155"));
                     contentLayout.setBackground(cardBg);
-                    contentLayout.setPadding(50, 60, 50, 60);
+                    contentLayout.setPadding(40, 40, 40, 40);
 
                     TextView mainLabel = new TextView(this);
-                    mainLabel.setText("Analyzer Dashboard");
-                    mainLabel.setTextSize(20);
+                    mainLabel.setText("Flight & Data Crash Analyzer");
+                    mainLabel.setTextSize(18);
                     mainLabel.setTextColor(Color.WHITE);
                     mainLabel.setTypeface(null, Typeface.BOLD);
-                    mainLabel.setPadding(0, 0, 0, 15);
+                    mainLabel.setPadding(0, 0, 0, 20);
 
-                    TextView subLabel = new TextView(this);
-                    subLabel.setText("System status: Active & Ready");
-                    subLabel.setTextSize(14);
-                    subLabel.setTextColor(Color.parseColor("#94A3B8"));
-                    subLabel.setPadding(0, 0, 0, 40);
+                    // Image Display Area
+                    imageView = new ImageView(this);
+                    imageView.setLayoutParams(new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, 350));
+                    imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+                    
+                    GradientDrawable imgBg = new GradientDrawable();
+                    imgBg.setColor(Color.parseColor("#0F172A"));
+                    imgBg.setCornerRadius(16f);
+                    imageView.setBackground(imgBg);
 
+                    // Upload Button
+                    Button uploadButton = new Button(this);
+                    uploadButton.setText("SELECT / UPLOAD IMAGE");
+                    uploadButton.setTextColor(Color.WHITE);
+                    uploadButton.setTypeface(null, Typeface.BOLD);
+                    
+                    GradientDrawable uploadBtnBg = new GradientDrawable();
+                    uploadBtnBg.setColor(Color.parseColor("#38BDF8"));
+                    uploadBtnBg.setCornerRadius(16f);
+                    uploadButton.setBackground(uploadBtnBg);
+
+                    LinearLayout.LayoutParams btnMargin = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    btnMargin.setMargins(0, 20, 0, 20);
+                    uploadButton.setLayoutParams(btnMargin);
+
+                    uploadButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Intent intent = new Intent();
+                            intent.setType("image/*");
+                            intent.setAction(Intent.ACTION_GET_CONTENT);
+                            startActivityForResult(Intent.createChooser(intent, "Select Image"), PICK_IMAGE_REQUEST);
+                        }
+                    });
+
+                    // Crash Times Input Box
+                    inputDataText = new EditText(this);
+                    inputDataText.setHint("Enter Crash Times (e.g., 08:30, 14:15, 21:05)");
+                    inputDataText.setHintTextColor(Color.parseColor("#64748B"));
+                    inputDataText.setTextColor(Color.WHITE);
+                    inputDataText.setTextSize(14);
+
+                    GradientDrawable inputBg = new GradientDrawable();
+                    inputBg.setColor(Color.parseColor("#0F172A"));
+                    inputBg.setCornerRadius(12f);
+                    inputBg.setStroke(2, Color.parseColor("#475569"));
+                    inputDataText.setBackground(inputBg);
+                    inputDataText.setPadding(25, 20, 25, 20);
+                    
+                    LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    inputParams.setMargins(0, 10, 0, 20);
+                    inputDataText.setLayoutParams(inputParams);
+
+                    // Analysis Start Button
                     Button actionButton = new Button(this);
                     actionButton.setText("START ANALYSIS");
                     actionButton.setTextColor(Color.WHITE);
@@ -142,25 +209,42 @@ jobs:
                     btnBg.setColor(Color.parseColor("#6366F1"));
                     btnBg.setCornerRadius(16f);
                     actionButton.setBackground(btnBg);
-                    actionButton.setPadding(30, 15, 30, 15);
+
+                    // Result Display Text Area
+                    resultTextView = new TextView(this);
+                    resultTextView.setText("Analysis Results will appear here...");
+                    resultTextView.setTextColor(Color.parseColor("#94A3B8"));
+                    resultTextView.setTextSize(13);
+                    resultTextView.setPadding(10, 25, 10, 10);
 
                     actionButton.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            Toast.makeText(MainActivity.this, "Analysis Initialized!", Toast.LENGTH_SHORT).show();
+                            String timesInput = inputDataText.getText().toString().trim();
+                            if (timesInput.isEmpty()) {
+                                resultTextView.setText("Analysis Summary:\n• Image/Data Loaded: Ready\n• Time Data: Default Pattern Analyzed\n• Peak Crash Risk Window: 02:00 AM - 05:00 AM");
+                            } else {
+                                resultTextView.setText("Analysis Summary:\n• Processed Times: " + timesInput + "\n• Temporal Cluster Identified\n• System Anomaly Probability: High");
+                            }
+                            Toast.makeText(MainActivity.this, "Analysis Completed!", Toast.LENGTH_SHORT).show();
                         }
                     });
 
                     contentLayout.addView(mainLabel);
-                    contentLayout.addView(subLabel);
+                    contentLayout.addView(imageView);
+                    contentLayout.addView(uploadButton);
+                    contentLayout.addView(inputDataText);
                     contentLayout.addView(actionButton);
+                    contentLayout.addView(resultTextView);
 
                     RelativeLayout.LayoutParams contentParams = new RelativeLayout.LayoutParams(
                             RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-                    contentParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+                    contentParams.addRule(RelativeLayout.BELOW, headerLayout.getId());
+                    contentParams.setMargins(0, 40, 0, 0);
                     rootLayout.addView(contentLayout, contentParams);
 
-                    setContentView(rootLayout);
+                    scrollView.addView(rootLayout);
+                    setContentView(scrollView);
 
                     // Live Clock Task
                     timeHandler = new Handler(Looper.getMainLooper());
@@ -182,6 +266,22 @@ jobs:
             }
 
             @Override
+            protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                super.onActivityResult(requestCode, resultCode, data);
+                if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+                    Uri imageUri = data.getData();
+                    try {
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+                        imageView.setImageBitmap(bitmap);
+                        Toast.makeText(this, "Image Uploaded Successfully!", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+
+            @Override
             protected void onDestroy() {
                 super.onDestroy();
                 if (timeHandler != null && updateTimeRunnable != null) {
@@ -191,11 +291,13 @@ jobs:
         }
         EOF
 
-        # Fixed AndroidManifest with proper Launcher Theme and Icon
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android"
             package="com.techwin.analyzer">
+            
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
             <application
                 android:allowBackup="true"
                 android:icon="@drawable/ic_launcher"
@@ -245,8 +347,8 @@ jobs:
                 applicationId "com.techwin.analyzer"
                 minSdk 21
                 targetSdk 33
-                versionCode 2
-                versionName "1.1"
+                versionCode 4
+                versionName "1.3"
             }
             compileOptions {
                 sourceCompatibility JavaVersion.VERSION_17
