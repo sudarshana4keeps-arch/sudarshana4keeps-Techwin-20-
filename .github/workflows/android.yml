@@ -37,9 +37,14 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 4. Correct Gradle & Build Config Generator
-    - name: Generate Gradle Project Structure & Build
+    # 4. Gradle Standalone බාගත කර Project Structure එක සෑදීම
+    - name: Setup Gradle Standalone & Build Structure
       run: |
+        # Gradle 8.2 බාගත කර Extract කිරීම
+        wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+        unzip -q gradle-8.2-bin.zip
+        export PATH=$PWD/gradle-8.2/bin:$PATH
+
         MANIFEST_PATH=$(find extracted_project -name "AndroidManifest.xml" | head -n 1)
         if [ -z "$MANIFEST_PATH" ]; then
           echo "AndroidManifest.xml not found!"
@@ -62,7 +67,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
+                classpath 'com.android.tools.build:gradle:8.2.2'
             }
         }
         allprojects {
@@ -79,7 +84,7 @@ jobs:
         include ':app'
         EOF
 
-        # gradle.properties (AndroidX support enable කිරීම)
+        # gradle.properties
         cat << 'EOF' > gradle.properties
         android.useAndroidX=true
         android.enableJetifier=true
@@ -118,12 +123,11 @@ jobs:
         }
         EOF
 
-        # Build Gradle Wrapper using Gradle 8.0
-        gradle wrapper --gradle-version 8.0
-        chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace --no-daemon
+        # Wrapper එක හදා Build කිරීම
+        gradle wrapper
+        ./gradlew assembleDebug --no-daemon
 
-    # 5. සාර්ථකව Build වූ පසු APK එක Download කර ගැනීමට Upload කිරීම
+    # 5. සාර්ථකව Build වූ පසු APK එක Upload කිරීම
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
