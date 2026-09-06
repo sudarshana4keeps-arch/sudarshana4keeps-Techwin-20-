@@ -19,24 +19,58 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.1.1'
-
-    - name: Prepare Project Structure
+    - name: Prepare Project Structure & Dummy Resources
       run: |
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
 
+        # Move MainActivity if present
         if [ -f "MainActivity.java" ]; then
           mv MainActivity.java app/src/main/java/com/techwin/analyzer/MainActivity.java
         fi
 
+        # Move AndroidManifest if present
         if [ -f "AndroidManifest.xml" ]; then
           mv AndroidManifest.xml app/src/main/AndroidManifest.xml
         fi
 
+        # Create basic Manifest if missing
+        if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:allowBackup="true"
+                  android:label="TECHWIN Analyzer"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+        fi
+
+        # Create basic layout if missing
+        if [ ! -f "app/src/main/res/layout/activity_main.xml" ]; then
+          cat << 'EOF' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical">
+          </LinearLayout>
+          EOF
+        fi
+
+        # Create Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -55,8 +89,10 @@ jobs:
         }
         EOF
 
+        # Create settings.gradle
         echo "include ':app'" > settings.gradle
 
+        # Create app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -81,8 +117,13 @@ jobs:
         }
         EOF
 
-    - name: Build Debug APK
-      run: gradle assembleDebug
+    - name: Setup Gradle Runner
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.1.1'
+
+    - name: Direct Gradle Build with Stacktrace
+      run: gradle assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
