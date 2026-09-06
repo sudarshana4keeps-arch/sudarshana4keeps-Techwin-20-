@@ -19,35 +19,73 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build APK using Android SDK Direct Command
+    - name: Auto Setup Project Structure and Gradle Wrapper
       run: |
+        # Create Directories
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
-        
-        # Check and Move MainActivity if needed
+
+        # Move MainActivity if it is in root
         if [ -f "MainActivity.java" ]; then
           mv MainActivity.java app/src/main/java/com/techwin/analyzer/MainActivity.java
         fi
-        
-        # Create Minimal build.gradle if missing
-        if [ ! -f "build.gradle" ]; then
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }" > build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
-        fi
-        
-        if [ ! -f "settings.gradle" ]; then
-          echo "include ':app'" > settings.gradle
-        fi
-        
-        if [ ! -f "app/build.gradle" ]; then
-          mkdir -p app
-          echo "plugins { id 'com.android.application' }" > app/build.gradle
-          echo "android { namespace 'com.techwin.analyzer'; compileSdk 33; defaultConfig { applicationId 'com.techwin.analyzer'; minSdk 21; targetSdk 33; versionCode 1; versionName '1.0' } }" >> app/build.gradle
-          echo "dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }" >> app/build.gradle
+
+        # Move AndroidManifest.xml if it is in root
+        if [ -f "AndroidManifest.xml" ]; then
+          mv AndroidManifest.xml app/src/main/AndroidManifest.xml
         fi
 
-        # Run Gradle Build
-        gradle assembleDebug
+        # Create Root build.gradle
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.0.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        # Create settings.gradle
+        echo "include ':app'" > settings.gradle
+
+        # Create app/build.gradle
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+        android {
+            namespace 'com.techwin.analyzer'
+            compileSdk 33
+            defaultConfig {
+                applicationId "com.techwin.analyzer"
+                minSdk 21
+                targetSdk 33
+                versionCode 1
+                versionName "1.0"
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+
+    - name: Build Debug APK
+      run: |
+        gradle wrapper
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
