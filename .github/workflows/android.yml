@@ -19,12 +19,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Clean Project Structure
+    - name: Generate Android Project
       run: |
-        rm -rf app build.gradle settings.gradle gradle gradlew gradlew.bat
+        rm -rf app build.gradle settings.gradle
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
-        mkdir -p gradle/wrapper
 
         cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
         package com.techwin.analyzer;
@@ -76,24 +75,28 @@ jobs:
         EOF
 
         cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
+        plugins {
+            id 'com.android.application' version '8.1.1' apply false
         }
         EOF
 
-        echo "include ':app'" > settings.gradle
+        cat << 'EOF' > settings.gradle
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        include ':app'
+        EOF
 
         cat << 'EOF' > app/build.gradle
         plugins {
@@ -101,11 +104,11 @@ jobs:
         }
         android {
             namespace 'com.techwin.analyzer'
-            compileSdk 33
+            compileSdk 34
             defaultConfig {
                 applicationId "com.techwin.analyzer"
                 minSdk 21
-                targetSdk 33
+                targetSdk 34
                 versionCode 1
                 versionName "1.0"
             }
@@ -119,24 +122,13 @@ jobs:
         }
         EOF
 
-        # Create Wrapper Config directly
-        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        networkTimeout=10000
-        validateDistributionUrl=true
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
-
     - name: Setup Gradle Runner
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.1.1'
 
     - name: Build Debug APK
-      run: gradle assembleDebug --no-daemon
+      run: gradle assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
