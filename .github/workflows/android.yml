@@ -19,26 +19,32 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Prepare Project Structure & Dummy Resources
-      run: |
-        mkdir -p app/src/main/java/com/techwin/analyzer
-        mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/res/values
+    - name: Create File Structure and Configuration
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
 
-        # Move MainActivity if present
-        if [ -f "MainActivity.java" ]; then
-          mv MainActivity.java app/src/main/java/com/techwin/analyzer/MainActivity.java
-        fi
+          // Ensure Directories Exist
+          const dirs = [
+            'app/src/main/java/com/techwin/analyzer',
+            'app/src/main/res/layout',
+            'app/src/main/res/values'
+          ];
+          dirs.forEach(dir => fs.mkdirSync(dir, { recursive: true }));
 
-        # Move AndroidManifest if present
-        if [ -f "AndroidManifest.xml" ]; then
-          mv AndroidManifest.xml app/src/main/AndroidManifest.xml
-        fi
+          // Move files if placed at root
+          if (fs.existsSync('MainActivity.java')) {
+            fs.renameSync('MainActivity.java', 'app/src/main/java/com/techwin/analyzer/MainActivity.java');
+          }
+          if (fs.existsSync('AndroidManifest.xml')) {
+            fs.renameSync('AndroidManifest.xml', 'app/src/main/AndroidManifest.xml');
+          }
 
-        # Create basic Manifest if missing
-        if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
-          cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
+          // Create AndroidManifest.xml if missing
+          if (!fs.existsSync('app/src/main/AndroidManifest.xml')) {
+            const manifest = `<?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
                   android:allowBackup="true"
@@ -54,76 +60,73 @@ jobs:
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>
-          EOF
-        fi
+          </manifest>`;
+            fs.writeFileSync('app/src/main/AndroidManifest.xml', manifest);
+          }
 
-        # Create basic layout if missing
-        if [ ! -f "app/src/main/res/layout/activity_main.xml" ]; then
-          cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-          <?xml version="1.0" encoding="utf-8"?>
+          // Create layout XML if missing
+          if (!fs.existsSync('app/src/main/res/layout/activity_main.xml')) {
+            const layout = `<?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical">
-          </LinearLayout>
-          EOF
-        fi
+          </LinearLayout>`;
+            fs.writeFileSync('app/src/main/res/layout/activity_main.xml', layout);
+          }
 
-        # Create Root build.gradle
-        cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        EOF
+          // Root build.gradle
+          const rootGradle = `buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.1.1'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }`;
+          fs.writeFileSync('build.gradle', rootGradle);
 
-        # Create settings.gradle
-        echo "include ':app'" > settings.gradle
+          // settings.gradle
+          fs.writeFileSync('settings.gradle', "include ':app'");
 
-        # Create app/build.gradle
-        cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-        }
-        android {
-            namespace 'com.techwin.analyzer'
-            compileSdk 33
-            defaultConfig {
-                applicationId "com.techwin.analyzer"
-                minSdk 21
-                targetSdk 33
-                versionCode 1
-                versionName "1.0"
-            }
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
-        }
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-        }
-        EOF
+          // app/build.gradle
+          const appGradle = `plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.techwin.analyzer'
+              compileSdk 33
+              defaultConfig {
+                  applicationId "com.techwin.analyzer"
+                  minSdk 21
+                  targetSdk 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }`;
+          fs.writeFileSync('app/build.gradle', appGradle);
 
     - name: Setup Gradle Runner
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.1.1'
 
-    - name: Direct Gradle Build with Stacktrace
-      run: gradle assembleDebug --stacktrace
+    - name: Build Debug APK
+      run: gradle assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
