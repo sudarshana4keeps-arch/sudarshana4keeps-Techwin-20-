@@ -8,30 +8,41 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    # Zip file එක extract කිරීම
-    - name: Unzip Android Project
+    # 1. Zip file එක තියෙන තැන automatic සොයා Extract කිරීම
+    - name: Find and Unzip Project
       run: |
-        unzip -q sudarshana4keeps-Techwin-20-/TECHWIN_FULL_ANDROID_PROJECT.zip -d extracted_project
-        ls -la extracted_project
+        ZIP_PATH=$(find . -name "*.zip" | head -n 1)
+        if [ -n "$ZIP_PATH" ]; then
+          echo "Found zip file at $ZIP_PATH"
+          unzip -q "$ZIP_PATH" -d extracted_project
+        else
+          echo "No ZIP file found in repository!"
+          exit 1
+        fi
 
-    - name: set up JDK 17
-      uses: actions/setup-java@v5
+    # 2. Java 17 Setup කිරීම
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    # gradlew file එකට permission ලබා දීම
-    - name: Grant execute permission for gradlew
-      working-directory: ./extracted_project
-      run: chmod +x gradlew || true
-
-    # Gradle Build එක සක්‍රීය කිරීම
+    # 3. gradlew file එක සොයා permission ලබා දීම සහ Build කිරීම
     - name: Build with Gradle
-      working-directory: ./extracted_project
-      run: ./gradlew build
+      run: |
+        GRADLEW_PATH=$(find extracted_project -name "gradlew" | head -n 1)
+        if [ -n "$GRADLEW_PATH" ]; then
+          BUILD_DIR=$(dirname "$GRADLEW_PATH")
+          cd "$BUILD_DIR"
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+        else
+          echo "gradlew wrapper not found inside extracted files!"
+          exit 1
+        fi
