@@ -19,12 +19,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Create File Structure and Configuration
+    - name: Prepare Clean Project & Source Files
       uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');
-          const path = require('path');
 
           // Ensure Directories Exist
           const dirs = [
@@ -34,17 +33,23 @@ jobs:
           ];
           dirs.forEach(dir => fs.mkdirSync(dir, { recursive: true }));
 
-          // Move files if placed at root
-          if (fs.existsSync('MainActivity.java')) {
-            fs.renameSync('MainActivity.java', 'app/src/main/java/com/techwin/analyzer/MainActivity.java');
-          }
-          if (fs.existsSync('AndroidManifest.xml')) {
-            fs.renameSync('AndroidManifest.xml', 'app/src/main/AndroidManifest.xml');
-          }
+          // Basic Valid MainActivity.java
+          const mainActivityContent = `package com.techwin.analyzer;
 
-          // Create AndroidManifest.xml if missing
-          if (!fs.existsSync('app/src/main/AndroidManifest.xml')) {
-            const manifest = `<?xml version="1.0" encoding="utf-8"?>
+          import android.os.Bundle;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+              }
+          }`;
+          fs.writeFileSync('app/src/main/java/com/techwin/analyzer/MainActivity.java', mainActivityContent);
+
+          // AndroidManifest.xml
+          const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
                   android:allowBackup="true"
@@ -61,19 +66,23 @@ jobs:
                   </activity>
               </application>
           </manifest>`;
-            fs.writeFileSync('app/src/main/AndroidManifest.xml', manifest);
-          }
+          fs.writeFileSync('app/src/main/AndroidManifest.xml', manifestContent);
 
-          // Create layout XML if missing
-          if (!fs.existsSync('app/src/main/res/layout/activity_main.xml')) {
-            const layout = `<?xml version="1.0" encoding="utf-8"?>
+          // activity_main.xml Layout
+          const layoutContent = `<?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
+              android:gravity="center"
               android:orientation="vertical">
+
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="TECHWIN Analyzer Working!"
+                  android:textSize="20sp" />
           </LinearLayout>`;
-            fs.writeFileSync('app/src/main/res/layout/activity_main.xml', layout);
-          }
+          fs.writeFileSync('app/src/main/res/layout/activity_main.xml', layoutContent);
 
           // Root build.gradle
           const rootGradle = `buildscript {
