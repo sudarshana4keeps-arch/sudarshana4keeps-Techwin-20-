@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 1. Zip file එක තියෙන තැන automatic සොයා Extract කිරීම
+    # 1. Zip file එක සොයා Extract කිරීම
     - name: Find and Unzip Project
       run: |
         ZIP_PATH=$(find . -name "*.zip" | head -n 1)
@@ -33,16 +33,18 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # 3. gradlew file එක සොයා permission ලබා දීම සහ Build කිරීම
-    - name: Build with Gradle
+    # 3. Setup Gradle Environment
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    # 4. Global Gradle මගින් Build එක සිදුකිරීම
+    - name: Build with System Gradle
       run: |
-        GRADLEW_PATH=$(find extracted_project -name "gradlew" | head -n 1)
-        if [ -n "$GRADLEW_PATH" ]; then
-          BUILD_DIR=$(dirname "$GRADLEW_PATH")
+        BUILD_DIR=$(find extracted_project -name "build.gradle" -exec dirname {} \; | head -n 1)
+        if [ -n "$BUILD_DIR" ]; then
           cd "$BUILD_DIR"
-          chmod +x gradlew
-          ./gradlew build --no-daemon
+          gradle build --no-daemon
         else
-          echo "gradlew wrapper not found inside extracted files!"
+          echo "build.gradle file not found inside ZIP!"
           exit 1
         fi
