@@ -19,123 +19,111 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle Environment
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.1.1'
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
 
-    - name: Prepare Clean Project & Source Files
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
+    - name: Setup Project Structure
+      run: |
+        mkdir -p app/src/main/java/com/techwin/analyzer
+        mkdir -p app/src/main/res/layout
+        mkdir -p gradle/wrapper
 
-          // Ensure Directories Exist
-          const dirs = [
-            'app/src/main/java/com/techwin/analyzer',
-            'app/src/main/res/layout',
-            'app/src/main/res/values'
-          ];
-          dirs.forEach(dir => fs.mkdirSync(dir, { recursive: true }));
+        cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
+        package com.techwin.analyzer;
+        import android.os.Bundle;
+        import androidx.appcompat.app.AppCompatActivity;
 
-          // Basic Valid MainActivity.java
-          const mainActivityContent = `package com.techwin.analyzer;
+        public class MainActivity extends AppCompatActivity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                setContentView(R.layout.activity_main);
+            }
+        }
+        EOF
 
-          import android.os.Bundle;
-          import androidx.appcompat.app.AppCompatActivity;
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application
+                android:allowBackup="true"
+                android:label="TECHWIN Analyzer"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
 
-          public class MainActivity extends AppCompatActivity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
-              }
-          }`;
-          fs.writeFileSync('app/src/main/java/com/techwin/analyzer/MainActivity.java', mainActivityContent);
+        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TECHWIN Analyzer Working!"
+                android:textSize="20sp" />
+        </LinearLayout>
+        EOF
 
-          // AndroidManifest.xml
-          const manifestContent = `<?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:allowBackup="true"
-                  android:label="TECHWIN Analyzer"
-                  android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>`;
-          fs.writeFileSync('app/src/main/AndroidManifest.xml', manifestContent);
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:7.4.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
 
-          // activity_main.xml Layout
-          const layoutContent = `<?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:gravity="center"
-              android:orientation="vertical">
+        echo "include ':app'" > settings.gradle
 
-              <TextView
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="TECHWIN Analyzer Working!"
-                  android:textSize="20sp" />
-          </LinearLayout>`;
-          fs.writeFileSync('app/src/main/res/layout/activity_main.xml', layoutContent);
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+        android {
+            namespace 'com.techwin.analyzer'
+            compileSdk 33
+            defaultConfig {
+                applicationId "com.techwin.analyzer"
+                minSdk 21
+                targetSdk 33
+                versionCode 1
+                versionName "1.0"
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
 
-          // Root build.gradle
-          const rootGradle = `buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.1'
-              }
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }`;
-          fs.writeFileSync('build.gradle', rootGradle);
-
-          // settings.gradle
-          fs.writeFileSync('settings.gradle', "include ':app'");
-
-          // app/build.gradle
-          const appGradle = `plugins {
-              id 'com.android.application'
-          }
-          android {
-              namespace 'com.techwin.analyzer'
-              compileSdk 33
-              defaultConfig {
-                  applicationId "com.techwin.analyzer"
-                  minSdk 21
-                  targetSdk 33
-                  versionCode 1
-                  versionName "1.0"
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-          }`;
-          fs.writeFileSync('app/build.gradle', appGradle);
-
-    - name: Build Debug APK
-      run: gradle assembleDebug --no-daemon
+    - name: Build with Gradle
+      run: |
+        gradle assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
