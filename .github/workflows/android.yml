@@ -13,17 +13,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
+    # Zip file එක extract කිරීම
+    - name: Unzip Android Project
+      run: |
+        unzip -q sudarshana4keeps-Techwin-20-/TECHWIN_FULL_ANDROID_PROJECT.zip -d extracted_project
+        ls -la extracted_project
+
     - name: set up JDK 17
       uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+    # gradlew file එකට permission ලබා දීම
+    - name: Grant execute permission for gradlew
+      working-directory: ./extracted_project
+      run: chmod +x gradlew || true
 
+    # Gradle Build එක සක්‍රීය කිරීම
     - name: Build with Gradle
-      # මෙතැන ඇති 'YOUR_FOLDER_NAME' වෙනුවට ඔබේ Project Folder එකේ නිවැරදි නම යොදන්න
-      working-directory: .
-      run: gradle build
+      working-directory: ./extracted_project
+      run: ./gradlew build
