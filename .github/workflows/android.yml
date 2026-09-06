@@ -21,9 +21,10 @@ jobs:
 
     - name: Prepare Clean Project Structure
       run: |
-        rm -rf app build.gradle settings.gradle
+        rm -rf app build.gradle settings.gradle gradle gradlew gradlew.bat
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
+        mkdir -p gradle/wrapper
 
         cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
         package com.techwin.analyzer;
@@ -118,14 +119,24 @@ jobs:
         }
         EOF
 
-    - name: Download Gradle Wrapper
-      run: |
-        gradle wrapper --gradle-version 8.1.1
+        # Create Wrapper Config directly
+        cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+
+    - name: Setup Gradle Runner
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.1.1'
 
     - name: Build Debug APK
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug
+      run: gradle assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
