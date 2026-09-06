@@ -13,19 +13,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: set up JDK 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android Project & Generate Wrapper
+    - name: Prepare Project Structure
       run: |
-        # Create Directories
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
 
-        # Move source files if they are in root
         if [ -f "MainActivity.java" ]; then
           mv MainActivity.java app/src/main/java/com/techwin/analyzer/MainActivity.java
         fi
@@ -34,7 +32,6 @@ jobs:
           mv AndroidManifest.xml app/src/main/AndroidManifest.xml
         fi
 
-        # Create Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -53,10 +50,8 @@ jobs:
         }
         EOF
 
-        # Create settings.gradle
         echo "include ':app'" > settings.gradle
 
-        # Create app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -81,13 +76,11 @@ jobs:
         }
         EOF
 
-        # Generate Wrapper Script
-        gradle wrapper --gradle-version 8.0
+    - name: Setup Gradle Runner
+      uses: gradle/actions/setup-gradle@v3
 
-    - name: Build Debug APK
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug
+    - name: Direct Gradle Build
+      run: gradle assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
