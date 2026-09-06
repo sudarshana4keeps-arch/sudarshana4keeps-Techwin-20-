@@ -15,22 +15,22 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Extract Zip (If present)
+    - name: Setup Android Project Structure
       run: |
-        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1 || true)
+        # 1. Zip එක Extract කිරීම
+        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
         if [ -n "$ZIP_FILE" ]; then
           echo "Extracting $ZIP_FILE..."
-          unzip -o "$ZIP_FILE" -d . || true
+          unzip -o "$ZIP_FILE" -d extracted_project
+          cp -rn extracted_project/*/* . 2>/dev/null || cp -rn extracted_project/* . 2>/dev/null || true
         fi
 
-    - name: Create Dynamic Build Files
-      run: |
-        # 1. Root build.gradle
+        # 2. Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -49,23 +49,20 @@ jobs:
         }
         EOF
 
-        # 2. Prepare app directory
+        # 3. Module structure සකස් කිරීම
         mkdir -p app/src/main/java app/src/main/res
 
-        # 3. Move AndroidManifest if exists in root
         if [ -f "AndroidManifest.xml" ]; then
           mv AndroidManifest.xml app/src/main/
         fi
 
-        # 4. Copy Java sources safely
-        find . -maxdepth 4 -type d \( -name "com" -o -name "org" -o -name "java" \) -exec cp -r {} app/src/main/java/ \; 2>/dev/null || true
+        find . -maxdepth 2 -name "*.java" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
 
-        # 5. Copy Res safely
         if [ -d "res" ]; then
-          cp -r res/* app/src/main/res/ 2>/dev/null || true
+          mv res/* app/src/main/res/ 2>/dev/null || true
         fi
 
-        # 6. App build.gradle
+        # 4. App build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -90,14 +87,18 @@ jobs:
         }
         EOF
 
-        # 7. settings.gradle
+        # 5. settings.gradle
         echo "include ':app'" > settings.gradle
 
-    - name: Generate Wrapper & Build APK
-      run: |
-        gradle wrapper --gradle-version 8.0
+        # 6. Install isolated Gradle Wrapper manually
+        wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip -q gradle-8.1.1-bin.zip
+        ./gradle-8.1.1/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace --full-stacktrace
+
+    - name: Build APK with Gradle
+      run: |
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
