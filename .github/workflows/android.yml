@@ -19,23 +19,19 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Auto Setup Project Structure and Gradle Wrapper
+    - name: Setup Project Files & Directories
       run: |
-        # Create Directories
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
 
-        # Move MainActivity if it is in root
         if [ -f "MainActivity.java" ]; then
           mv MainActivity.java app/src/main/java/com/techwin/analyzer/MainActivity.java
         fi
 
-        # Move AndroidManifest.xml if it is in root
         if [ -f "AndroidManifest.xml" ]; then
           mv AndroidManifest.xml app/src/main/AndroidManifest.xml
         fi
 
-        # Create Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -43,7 +39,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.0.2'
+                classpath 'com.android.tools.build:gradle:7.4.2'
             }
         }
         allprojects {
@@ -54,10 +50,8 @@ jobs:
         }
         EOF
 
-        # Create settings.gradle
         echo "include ':app'" > settings.gradle
 
-        # Create app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -73,8 +67,8 @@ jobs:
                 versionName "1.0"
             }
             compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
+                sourceCompatibility JavaVersion.VERSION_11
+                targetCompatibility JavaVersion.VERSION_11
             }
         }
         dependencies {
@@ -82,10 +76,10 @@ jobs:
         }
         EOF
 
-    - name: Build Debug APK
-      run: |
-        gradle wrapper
-        ./gradlew assembleDebug
+    - name: Build Debug APK with Gradle Action
+      uses: gradle/gradle-build-action@v2
+      with:
+        arguments: assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
