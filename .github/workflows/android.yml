@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 1. Zip file එක සොයා Extract කිරීම
+    # 1. Zip file එක Unzip කිරීම
     - name: Find and Unzip Project
       run: |
         ZIP_PATH=$(find . -name "*.zip" | head -n 1)
@@ -37,23 +37,91 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 4. Gradle Wrapper එකක් නොමැති නම් Generator එකක් සෑදීම සහ Build කිරීම
-    - name: Build Android App
+    # 4. නැති build.gradle සහ Structure එක auto හදා Build කිරීම
+    - name: Generate Gradle Project Structure & Build
       run: |
-        # build.gradle තියෙන Directory එක සොයාගැනීම
-        BUILD_DIR=$(find extracted_project -name "build.gradle" -exec dirname {} \; | head -n 1)
+        # Manifest එක තියෙන තැන සොයාගැනීම
+        MANIFEST_PATH=$(find extracted_project -name "AndroidManifest.xml" | head -n 1)
         
-        if [ -z "$BUILD_DIR" ]; then
-          echo "Error: build.gradle file not found inside ZIP archive!"
+        if [ -z "$MANIFEST_PATH" ]; then
+          echo "AndroidManifest.xml not found!"
           exit 1
         fi
         
-        cd "$BUILD_DIR"
+        SRC_DIR=$(dirname "$MANIFEST_PATH")
+        PROJECT_ROOT="generated_android_project"
         
-        # gradlew file එක නැත්නම් GradleWrapper create කිරීම
-        if [ ! -f "./gradlew" ]; then
-          gradle wrapper
-        fi
+        # Standard Android Structure එක සැකසීම
+        mkdir -p "$PROJECT_ROOT/app/src/main"
+        cp -r "$SRC_DIR/"* "$PROJECT_ROOT/app/src/main/"
         
+        cd "$PROJECT_ROOT"
+        
+        # Root build.gradle එක සෑදීම
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.2.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        # settings.gradle එක සෑදීම
+        cat << 'EOF' > settings.gradle
+        rootProject.name = "TECHWIN"
+        include ':app'
+        EOF
+
+        # app/build.gradle එක සෑදීම
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.techwin.app'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.techwin.app"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+            implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
+        }
+        EOF
+
+        # GradleWrapper සෑදීම සහ APK එක Build කිරීම
+        gradle wrapper
         chmod +x gradlew
         ./gradlew assembleDebug --no-daemon
+
+    # 5. සාදාගත් APK එක Download කරගැනීමට Upload කිරීම
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: generated_android_project/app/build/outputs/apk/debug/app-debug.apk
