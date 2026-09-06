@@ -24,4 +24,6 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Build with Gradle
+      # මෙතැන ඇති 'YOUR_FOLDER_NAME' වෙනුවට ඔබේ Project Folder එකේ නිවැරදි නම යොදන්න
+      working-directory: .
       run: gradle build
