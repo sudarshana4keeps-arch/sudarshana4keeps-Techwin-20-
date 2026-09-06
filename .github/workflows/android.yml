@@ -19,34 +19,39 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Generate Android Project
+    - name: Setup Basic Android Project
       run: |
-        rm -rf app build.gradle settings.gradle
+        rm -rf app build.gradle settings.gradle gradlew gradlew.bat gradle
+        
         mkdir -p app/src/main/java/com/techwin/analyzer
         mkdir -p app/src/main/res/layout
 
         cat << 'EOF' > app/src/main/java/com/techwin/analyzer/MainActivity.java
         package com.techwin.analyzer;
-        import android.os.Bundle;
-        import androidx.appcompat.app.AppCompatActivity;
 
-        public class MainActivity extends AppCompatActivity {
+        import android.app.Activity;
+        import android.os.Bundle;
+        import android.widget.TextView;
+
+        public class MainActivity extends Activity {
             @Override
             protected void onCreate(Bundle savedInstanceState) {
                 super.onCreate(savedInstanceState);
-                setContentView(R.layout.activity_main);
+                TextView textView = new TextView(this);
+                textView.setText("TECHWIN Analyzer App");
+                setContentView(textView);
             }
         }
         EOF
 
         cat << 'EOF' > app/src/main/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.techwin.analyzer">
             <application
                 android:allowBackup="true"
                 android:label="TECHWIN Analyzer"
-                android:supportsRtl="true"
-                android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                android:supportsRtl="true">
                 <activity
                     android:name=".MainActivity"
                     android:exported="true">
@@ -59,44 +64,25 @@ jobs:
         </manifest>
         EOF
 
-        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:orientation="vertical">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="TECHWIN Analyzer Ready!"
-                android:textSize="20sp" />
-        </LinearLayout>
-        EOF
-
         cat << 'EOF' > build.gradle
-        plugins {
-            id 'com.android.application' version '8.1.1' apply false
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:7.4.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
         }
         EOF
 
-        cat << 'EOF' > settings.gradle
-        pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        include ':app'
-        EOF
+        echo "include ':app'" > settings.gradle
 
         cat << 'EOF' > app/build.gradle
         plugins {
@@ -104,11 +90,11 @@ jobs:
         }
         android {
             namespace 'com.techwin.analyzer'
-            compileSdk 34
+            compileSdk 33
             defaultConfig {
                 applicationId "com.techwin.analyzer"
                 minSdk 21
-                targetSdk 34
+                targetSdk 33
                 versionCode 1
                 versionName "1.0"
             }
@@ -117,18 +103,13 @@ jobs:
                 targetCompatibility JavaVersion.VERSION_17
             }
         }
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-        }
         EOF
 
-    - name: Setup Gradle Runner
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.1.1'
-
-    - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace
+    - name: Generate Wrapper and Build APK
+      run: |
+        gradle wrapper --gradle-version 7.5
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
