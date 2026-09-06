@@ -37,12 +37,10 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 4. නැති build.gradle සහ Structure එක auto හදා Build කිරීම
+    # 4. Correct Gradle & Build Config Generator
     - name: Generate Gradle Project Structure & Build
       run: |
-        # Manifest එක තියෙන තැන සොයාගැනීම
         MANIFEST_PATH=$(find extracted_project -name "AndroidManifest.xml" | head -n 1)
-        
         if [ -z "$MANIFEST_PATH" ]; then
           echo "AndroidManifest.xml not found!"
           exit 1
@@ -51,13 +49,12 @@ jobs:
         SRC_DIR=$(dirname "$MANIFEST_PATH")
         PROJECT_ROOT="generated_android_project"
         
-        # Standard Android Structure එක සැකසීම
         mkdir -p "$PROJECT_ROOT/app/src/main"
         cp -r "$SRC_DIR/"* "$PROJECT_ROOT/app/src/main/"
         
         cd "$PROJECT_ROOT"
         
-        # Root build.gradle එක සෑදීම
+        # Root build.gradle
         cat << 'EOF' > build.gradle
         buildscript {
             repositories {
@@ -65,7 +62,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.2.2'
+                classpath 'com.android.tools.build:gradle:8.1.1'
             }
         }
         allprojects {
@@ -76,13 +73,20 @@ jobs:
         }
         EOF
 
-        # settings.gradle එක සෑදීම
+        # settings.gradle
         cat << 'EOF' > settings.gradle
         rootProject.name = "TECHWIN"
         include ':app'
         EOF
 
-        # app/build.gradle එක සෑදීම
+        # gradle.properties (AndroidX support enable කිරීම)
+        cat << 'EOF' > gradle.properties
+        android.useAndroidX=true
+        android.enableJetifier=true
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        EOF
+
+        # app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -114,12 +118,12 @@ jobs:
         }
         EOF
 
-        # GradleWrapper සෑදීම සහ APK එක Build කිරීම
-        gradle wrapper
+        # Build Gradle Wrapper using Gradle 8.0
+        gradle wrapper --gradle-version 8.0
         chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        ./gradlew assembleDebug --stacktrace --no-daemon
 
-    # 5. සාදාගත් APK එක Download කරගැනීමට Upload කිරීම
+    # 5. සාර්ථකව Build වූ පසු APK එක Download කර ගැනීමට Upload කිරීම
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
