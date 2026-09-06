@@ -1,6 +1,10 @@
 # Gradle files
 .gradle/
 build/
+dependencies {
+    // Google ML Kit Text Recognition
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
+}
 
 # Local configuration file (sdk path, etc)
 local.properties
